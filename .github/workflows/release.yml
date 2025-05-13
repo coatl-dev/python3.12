@@ -1,0 +1,74 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 3.12.*
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.COATL_BOT_GH_TOKEN }}
+
+      - name: Download Python 3.12
+        run: |
+          curl -O "https://www.python.org/ftp/python/${{ github.ref_name }}/Python-${{ github.ref_name }}.tgz"
+          tar -xzf "Python-${{ github.ref_name }}.tgz"
+        shell: bash
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install Sphinx
+        shell: bash
+
+      - name: Set SPHINXBUILD environment variable
+        run: |
+          $sphinxBuild = (Get-Command sphinx-build.exe).Source
+          echo "SPHINXBUILD=$sphinxBuild" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: powershell
+
+      - name: Fetch external libraries and tools
+        run: |
+          .\PCbuild\get_externals.bat
+          .\Tools\msi\get_externals.bat
+        shell: powershell
+        working-directory: Python-${{ github.ref_name }}
+
+      - name: Building ...
+        run: |
+          .\Tools\msi\buildrelease.bat -x86
+          .\Tools\msi\buildrelease.bat -x64
+        working-directory: Python-${{ github.ref_name }}
+        shell: powershell
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes "Automated release for version ${{ github.ref_name }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.COATL_BOT_GH_TOKEN }}
+        shell: bash
+
+      - name: Upload artifacts to GitHub release
+        run: |
+            gh release upload "${{ github.ref_name }}" `
+            --clobber `
+            Python-${{ github.ref_name }}\PCbuild\win32\en-us\python-${{ github.ref_name }}.exe `
+            Python-${{ github.ref_name }}\PCbuild\win32\en-us\python-${{ github.ref_name }}-embed-win32.zip `
+            Python-${{ github.ref_name }}\PCbuild\win32\en-us\pythonx86.${{ github.ref_name }}.nupkg `
+            Python-${{ github.ref_name }}\PCbuild\amd64\en-us\python.${{ github.ref_name }}.nupkg `
+            Python-${{ github.ref_name }}\PCbuild\amd64\en-us\python-${{ github.ref_name }}-amd64.exe `
+            Python-${{ github.ref_name }}\PCbuild\amd64\en-us\python-${{ github.ref_name }}-embed-amd64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.COATL_BOT_GH_TOKEN }}
+        shell: powershell

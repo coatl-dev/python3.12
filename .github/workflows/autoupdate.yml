@@ -1,0 +1,45 @@
+name: autoupdate
+
+on:
+  schedule:
+    - cron: '0 18 10 2-12/2 *'
+  workflow_dispatch:
+
+jobs:
+  autoupdate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.COATL_BOT_GH_TOKEN }}
+
+      - name: Fetch latest Python 3.12 release
+        run: |
+          python_version=$(curl -s https://www.python.org/ftp/python/ | grep -oP '3\.12\.\d+/' | uniq | sort -V | tail -n 1 | tr -d '/')
+
+          echo "python3.12: $python_version"
+
+          echo ${python_version} > .python_version
+          echo "PYTHON_VERSION=${python_version}" >> $GITHUB_ENV
+
+      - name: Detect changes
+        id: git-diff
+        uses: coatl-dev/actions/simple-git-diff@v4
+
+      - name: Import GPG key
+        if: ${{ steps.git-diff.outputs.diff == 'true' }}
+        id: gpg-import
+        uses: coatl-dev/actions/gpg-import@v4
+        with:
+          passphrase: ${{ secrets.COATL_BOT_GPG_PASSPHRASE }}
+          private-key: ${{ secrets.COATL_BOT_GPG_PRIVATE_KEY }}
+
+      - name: Commit and push changes
+        if: ${{ steps.git-diff.outputs.diff == 'true' }}
+        run: |
+          git add -u
+          git commit -m "release: ${{ env.PYTHON_VERSION }}"
+          git tag -a ${{ env.PYTHON_VERSION }} -m "${{ env.PYTHON_VERSION }}"
+          git push --tags
