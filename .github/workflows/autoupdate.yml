@@ -16,13 +16,14 @@ jobs:
           token: ${{ secrets.COATL_BOT_GH_TOKEN }}
 
       - name: Fetch latest Python 3.12 release
+        id: get-python-version
         run: |
           python_version=$(curl -s https://www.python.org/ftp/python/ | grep -oP '3\.12\.\d+/' | uniq | sort -V | tail -n 1 | tr -d '/')
 
           echo "python3.12: $python_version"
 
           echo ${python_version} > .python_version
-          echo "PYTHON_VERSION=${python_version}" >> $GITHUB_ENV
+          echo "python_version=${python_version}" >> $GITHUB_OUTPUT
 
       - name: Detect changes
         id: git-diff
@@ -40,6 +41,9 @@ jobs:
         if: ${{ steps.git-diff.outputs.diff == 'true' }}
         run: |
           git add -u
-          git commit -m "release: ${{ env.PYTHON_VERSION }}"
-          git tag -a ${{ env.PYTHON_VERSION }} -m "${{ env.PYTHON_VERSION }}"
+          git commit \
+            -m "release: ${{ steps.get-python-version.outputs.python_version }}"
+          git tag \
+            -a ${{ steps.get-python-version.outputs.python_version }} \
+            -m "${{ steps.get-python-version.outputs.python_version }}"
           git push --tags

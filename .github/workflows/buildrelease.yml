@@ -1,4 +1,4 @@
-name: release
+name: buildrelease
 
 on:
   push:
@@ -6,14 +6,16 @@ on:
       - 3.12.*
 
 jobs:
-  build:
+  buildrelease:
+    env:
+      GITHUB_TOKEN: ${{ secrets.COATL_BOT_GH_TOKEN }}
     runs-on: windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.COATL_BOT_GH_TOKEN }}
+          token: ${{ env.GITHUB_TOKEN }}
 
       - name: Download Python 3.12
         run: |
@@ -45,8 +47,7 @@ jobs:
 
       - name: Building ...
         run: |
-          .\Tools\msi\buildrelease.bat -x86
-          .\Tools\msi\buildrelease.bat -x64
+          .\Tools\msi\buildrelease.bat
         working-directory: Python-${{ github.ref_name }}
         shell: powershell
 
@@ -55,20 +56,17 @@ jobs:
           gh release create "${{ github.ref_name }}" \
             --title "${{ github.ref_name }}" \
             --notes "Automated release for version ${{ github.ref_name }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.COATL_BOT_GH_TOKEN }}
         shell: bash
 
       - name: Upload artifacts to GitHub release
         run: |
             gh release upload "${{ github.ref_name }}" `
             --clobber `
-            Python-${{ github.ref_name }}\PCbuild\win32\en-us\python-${{ github.ref_name }}.exe `
-            Python-${{ github.ref_name }}\PCbuild\win32\en-us\python-${{ github.ref_name }}-embed-win32.zip `
-            Python-${{ github.ref_name }}\PCbuild\win32\en-us\pythonx86.${{ github.ref_name }}.nupkg `
-            Python-${{ github.ref_name }}\PCbuild\amd64\en-us\python.${{ github.ref_name }}.nupkg `
-            Python-${{ github.ref_name }}\PCbuild\amd64\en-us\python-${{ github.ref_name }}-amd64.exe `
-            Python-${{ github.ref_name }}\PCbuild\amd64\en-us\python-${{ github.ref_name }}-embed-amd64.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.COATL_BOT_GH_TOKEN }}
+            .\PCbuild\win32\en-us\python-${{ github.ref_name }}.exe `
+            .\PCbuild\win32\en-us\python-${{ github.ref_name }}-embed-win32.zip `
+            .\PCbuild\win32\en-us\pythonx86.${{ github.ref_name }}.nupkg `
+            .\PCbuild\amd64\en-us\python.${{ github.ref_name }}.nupkg `
+            .\PCbuild\amd64\en-us\python-${{ github.ref_name }}-amd64.exe `
+            .\PCbuild\amd64\en-us\python-${{ github.ref_name }}-embed-amd64.zip
+        working-directory: Python-${{ github.ref_name }}
         shell: powershell
