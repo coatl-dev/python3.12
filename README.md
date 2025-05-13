@@ -1,5 +1,9 @@
 # Python 3.12 Installers for Windows
 
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/coatl-dev/python3.12/coatl.svg)](https://results.pre-commit.ci/latest/github/coatl-dev/python3.12/coatl)
+![GitHub Release](https://img.shields.io/github/v/release/coatl-dev/python3.12)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/coatl-dev/python3.12/total)
+
 This repository provides binary installers for Python 3.12 on Windows.
 
 ## Motivation
