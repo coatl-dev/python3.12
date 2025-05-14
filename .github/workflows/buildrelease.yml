@@ -5,11 +5,28 @@ on:
     tags:
       - 3.12.*
 
+env:
+  GITHUB_TOKEN: ${{ secrets.COATL_BOT_GH_TOKEN }}
+
 jobs:
-  buildrelease:
-    env:
-      GITHUB_TOKEN: ${{ secrets.COATL_BOT_GH_TOKEN }}
-    runs-on: windows-latest
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Python 3.12
+        run: |
+          curl -O "https://www.python.org/ftp/python/${{ github.ref_name }}/Python-${{ github.ref_name }}.tgz"
+        shell: bash
+
+      - name: Upload tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-tarball
+          path: Python-${{ github.ref_name }}.tgz
+          if-no-files-found: error
+
+  gh-release:
+    needs: download
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,10 +34,49 @@ jobs:
           fetch-depth: 0
           token: ${{ env.GITHUB_TOKEN }}
 
-      - name: Download Python 3.12
+      - name: Create GitHub release
         run: |
-          curl -O "https://www.python.org/ftp/python/${{ github.ref_name }}/Python-${{ github.ref_name }}.tgz"
-          tar -xzf "Python-${{ github.ref_name }}.tgz"
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes "Automated release for version ${{ github.ref_name }}"
+        shell: bash
+
+  buildrelease:
+    needs:
+      - download
+      - gh-release
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            build-arch: '-x64'
+            arch: 'amd64'
+            exe-suffix: '-amd64.exe'
+          - os: windows-latest
+            build-arch: '-x86'
+            arch: 'win32'
+            exe-suffix: '.exe'
+          - os: windows-11-arm
+            build-arch: '-ARM64'
+            arch: 'arm64'
+            exe-suffix: '-arm64.exe'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ env.GITHUB_TOKEN }}
+
+      - name: Download tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: python-tarball
+          path: .
+
+      - name: Extract tarball
+        run: |
+          tar -xzf Python-${{ github.ref_name }}.tgz
         shell: bash
 
       - uses: actions/setup-python@v5
@@ -47,26 +103,14 @@ jobs:
 
       - name: Building ...
         run: |
-          .\Tools\msi\buildrelease.bat
+          .\Tools\msi\buildrelease.bat ${{ matrix.build-arch }}
         working-directory: Python-${{ github.ref_name }}
         shell: powershell
-
-      - name: Create GitHub release
-        run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
-            --notes "Automated release for version ${{ github.ref_name }}"
-        shell: bash
 
       - name: Upload artifacts to GitHub release
         run: |
             gh release upload "${{ github.ref_name }}" `
             --clobber `
-            .\PCbuild\win32\en-us\python-${{ github.ref_name }}.exe `
-            .\PCbuild\win32\en-us\python-${{ github.ref_name }}-embed-win32.zip `
-            .\PCbuild\win32\en-us\pythonx86.${{ github.ref_name }}.nupkg `
-            .\PCbuild\amd64\en-us\python.${{ github.ref_name }}.nupkg `
-            .\PCbuild\amd64\en-us\python-${{ github.ref_name }}-amd64.exe `
-            .\PCbuild\amd64\en-us\python-${{ github.ref_name }}-embed-amd64.zip
+            .\PCbuild\${{ matrix.arch }}\en-us\python-${{ github.ref_name }}${{ matrix.exe-suffix }}
         working-directory: Python-${{ github.ref_name }}
         shell: powershell

@@ -46,4 +46,4 @@ jobs:
           git tag \
             -a ${{ steps.get-python-version.outputs.python_version }} \
             -m "${{ steps.get-python-version.outputs.python_version }}"
-          git push --tags
+          git push origin HEAD --tags
