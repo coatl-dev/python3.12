@@ -18,12 +18,12 @@ jobs:
       - name: Fetch latest Python 3.12 release
         id: get-python-version
         run: |
-          python-version=$(curl -s https://www.python.org/ftp/python/ | grep -oP '3\.12\.\d+/' | uniq | sort -V | tail -n 1 | tr -d '/')
+          python_version=$(curl -s https://www.python.org/ftp/python/ | grep -oP '3\.12\.\d+/' | uniq | sort -V | tail -n 1 | tr -d '/')
 
-          echo "python3.12: $python-version"
+          echo "python3.12: $python_version"
 
-          echo ${python-version} > .python-version
-          echo "python-version=${python-version}" >> $GITHUB_OUTPUT
+          echo ${python_version} > .python-version
+          echo "python-version=${python_version}" >> $GITHUB_OUTPUT
 
       - name: Detect changes
         id: git-diff
