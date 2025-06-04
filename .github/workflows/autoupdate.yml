@@ -22,7 +22,7 @@ jobs:
 
           echo "python3.12: $python-version"
 
-          echo ${python_version} > .python-version
+          echo ${python-version} > .python-version
           echo "python-version=${python-version}" >> $GITHUB_OUTPUT
 
       - name: Detect changes
