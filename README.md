@@ -18,12 +18,26 @@ Python 3.12 has reached the end of its regular bugfix support (see: [PEP 693]), 
 | x64          | `python-3.12.*-amd64.exe` | For 64-bit systems (Recommended)     |
 | ARM64        | `python-3.12.*-arm64.exe` | For ARM-based systems (Experimental) |
 
-## Usage
+## Installation
 
-Download the appropriate installer for your system from the repository's releases section and follow the standard installation process for Python on Windows.
+Download the appropriate installer for your system from the repository's [releases] section and follow the standard installation process for Python on Windows.
+
+Alternatively you can install this via [Scoop], the Windows command-line installer. First, add our bucket:
+
+```powershell
+scoop bucket add coatl-dev https://github.com/coatl-dev/scoop-coatl-dev
+```
+
+And then, run:
+
+```powershell
+scoop install coatl-dev/python312
+```
 
 ## License
 
 This repository is provided for convenience and follows the licensing terms of Python Software Foundation.
 
 [PEP 693]: https://peps.python.org/pep-0693/
+[releases]: https://github.com/coatl-dev/python3.12/releases
+[Scoop]: https://scoop.sh/
