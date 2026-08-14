@@ -6,5 +6,5 @@ updates:
       interval: "monthly"
     labels: ["dependencies"]
     commit-message:
-      prefix: "refactor"
+      prefix: "ci"
       include: "scope"
