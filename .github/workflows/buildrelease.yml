@@ -1,0 +1,118 @@
+name: buildrelease
+
+on:
+  push:
+    tags:
+      - 3.12.*
+
+env:
+  GITHUB_TOKEN: ${{ secrets.COATL_BOT_GH_TOKEN }}
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Python 3.12
+        run: |
+          curl -O "https://www.python.org/ftp/python/${{ github.ref_name }}/Python-${{ github.ref_name }}.tgz"
+        shell: bash
+
+      - name: Upload tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-tarball
+          path: Python-${{ github.ref_name }}.tgz
+          if-no-files-found: error
+
+  gh-release:
+    needs: download
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ env.GITHUB_TOKEN }}
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes "Automated release for version ${{ github.ref_name }}"
+        shell: bash
+
+  buildrelease:
+    needs:
+      - download
+      - gh-release
+    strategy:
+      matrix:
+        include:
+          - os: windows-2022
+            build-arch: '-x64'
+            arch: 'amd64'
+            exe-suffix: '-amd64.exe'
+          - os: windows-2022
+            build-arch: '-x86'
+            arch: 'win32'
+            exe-suffix: '.exe'
+          - os: windows-11-arm
+            build-arch: '-ARM64'
+            arch: 'arm64'
+            exe-suffix: '-arm64.exe'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ env.GITHUB_TOKEN }}
+
+      - name: Download tarball
+        uses: actions/download-artifact@v8
+        with:
+          name: python-tarball
+          path: .
+
+      - name: Extract tarball
+        run: |
+          tar -xzf Python-${{ github.ref_name }}.tgz
+        shell: bash
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install \
+            "Sphinx<9" \
+            "python-docs-theme<2026"
+        shell: bash
+
+      - name: Set SPHINXBUILD environment variable
+        run: |
+          $sphinxBuild = (Get-Command sphinx-build.exe).Source
+          echo "SPHINXBUILD=$sphinxBuild" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: powershell
+
+      - name: Fetch external libraries and tools
+        run: |
+          .\PCbuild\get_externals.bat
+          .\Tools\msi\get_externals.bat
+        shell: powershell
+        working-directory: Python-${{ github.ref_name }}
+
+      - name: Building ...
+        run: |
+          .\Tools\msi\buildrelease.bat ${{ matrix.build-arch }}
+        working-directory: Python-${{ github.ref_name }}
+        shell: powershell
+
+      - name: Upload artifacts to GitHub release
+        run: |
+            gh release upload "${{ github.ref_name }}" `
+            --clobber `
+            .\PCbuild\${{ matrix.arch }}\en-us\python-${{ github.ref_name }}${{ matrix.exe-suffix }}
+        working-directory: Python-${{ github.ref_name }}
+        shell: powershell
